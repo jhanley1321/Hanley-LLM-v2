@@ -1,19 +1,20 @@
 import streamlit as st
-import requests
-import json
 
 class ChatUI:
-    """Streamlit chat interface for Ollama"""
+    """Streamlit chat interface - agnostic of LLM implementation"""
 
-    def __init__(self, model="llama2", ollama_url="http://localhost:11434/api/chat"):
-        self.model = model
-        self.ollama_url = ollama_url
+    def __init__(self, chat_handler):
+        """
+        Args:
+            chat_handler: Any object with a .stream_chat(messages) method
+        """
+        self.chat_handler = chat_handler
         self._init_page()
         self._init_session_state()
 
     def _init_page(self):
-        st.set_page_config(page_title="Minimal Ollama Chat", page_icon="🤖")
-        st.title("🤖 Minimal Ollama Chat")
+        st.set_page_config(page_title="Ollama Chat", page_icon="🤖")
+        st.title("🤖 Ollama Chat")
 
     def _init_session_state(self):
         if "messages" not in st.session_state:
@@ -35,27 +36,13 @@ class ChatUI:
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
                 full_response = ""
-                try:
-                    response = requests.post(
-                        self.ollama_url,
-                        json={
-                            "model": self.model,
-                            "messages": st.session_state.messages,
-                            "stream": True
-                        },
-                        stream=True
-                    )
-                    for line in response.iter_lines():
-                        if line:
-                            json_response = json.loads(line)
-                            if "message" in json_response:
-                                chunk = json_response["message"]["content"]
-                                full_response += chunk
-                                message_placeholder.markdown(full_response + "▌")
-                    message_placeholder.markdown(full_response)
-                except Exception as e:
-                    full_response = f"Error: {str(e)}. Make sure Ollama is running with: `ollama serve`"
-                    message_placeholder.markdown(full_response)
+                
+                # Use the injected chat handler
+                for chunk in self.chat_handler.stream_chat(st.session_state.messages):
+                    full_response += chunk
+                    message_placeholder.markdown(full_response + "▌")
+                
+                message_placeholder.markdown(full_response)
 
             st.session_state.messages.append({"role": "assistant", "content": full_response})
 
@@ -66,7 +53,8 @@ class ChatUI:
                 st.session_state.messages = []
                 st.rerun()
             st.markdown("---")
-            st.markdown(f"**Model:** {self.model}")
+            model_name = getattr(self.chat_handler, 'model', 'Unknown')
+            st.markdown(f"**Model:** {model_name}")
             status = "🟢 Connected" if len(st.session_state.messages) else "⚪ Ready"
             st.markdown(f"**Status:** {status}")
 
