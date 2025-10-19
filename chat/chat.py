@@ -9,22 +9,35 @@ class Chat:
     def __init__(self):
         self.chat_log = []
         self._model = None
+        self.history = None
 
     def set_model(self, model):
         """Attach any backend model that implements send(message:str)->str."""
         self._model = model
+
 
     def send(self, user_input: str) -> str:
         """Accept user input, forward to model, store both messages in memory."""
         if not self._model:
             raise RuntimeError("No model attached to Chat layer. Use set_model() first.")
 
-        # user message
+        # Record user input in memory
         timestamp = datetime.now(timezone.utc).isoformat()
         self.chat_log.append({"role": "user", "content": user_input, "timestamp": timestamp})
 
-        # model reply
+        # Ask the model for a reply
         reply = self._model.send(user_input)
-        self.chat_log.append({"role": "assistant", "content": reply,
-                              "timestamp": datetime.now(timezone.utc).isoformat()})
+
+        # Record model output in memory
+        self.chat_log.append({
+            "role": "assistant",
+            "content": reply,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+
+        # Save the turn to disk via ChatHistory if attached
+        if self.history:
+            self.history.add_turn(user_input, reply)
+
+        # Return the model's response up to caller
         return reply

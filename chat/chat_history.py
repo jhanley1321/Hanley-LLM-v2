@@ -4,56 +4,52 @@ from pathlib import Path
 
 
 class ChatHistory:
+    """
+    Stores full chat turns (user prompt + model reply) per session.
+    Each session is a single JSON file in 'projects/'.
+    """
+
     def __init__(self, model_name: str = "llama2") -> None:
         self.model_name = model_name
 
-        # ✅ Use timezone-aware UTC for modern best practice and Windows-safe format
+        # Create a unique, UTC-safe session id and file
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-        self.session_id = timestamp  # unique project identifier
-
-        # ✅ Each project is one JSON file (no folders)
+        self.session_id = timestamp
         Path("projects").mkdir(exist_ok=True)
         self.session_file = Path("projects") / f"{timestamp}.json"
 
         base = {
-            self.model_name: [],
             "_meta": {
                 "session_id": self.session_id,
                 "created_at": self.session_id,
-                "active_model": self.model_name,
-                "history_order": [self.model_name],
+                "model_name": self.model_name,
             },
+            "turns": [],
         }
         self._write(base)
 
     # ----------------------------------------------------------------
-    def _write(self, data) -> None:
-        """Write session content to disk."""
+    def _write(self, data: dict) -> None:
         with open(self.session_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
     # ----------------------------------------------------------------
-    def _read(self):
-        """Read the current project file."""
+    def _read(self) -> dict:
         with open(self.session_file, "r", encoding="utf-8") as f:
             return json.load(f)
 
     # ----------------------------------------------------------------
-    def add_message(self, role: str, content: str) -> None:
-        """Append a new message to the current model’s chat history."""
+    def add_turn(self, user_input: str, model_output: str) -> None:
+        """
+        Record a complete conversation turn:
+        - user input
+        - model output
+        """
         data = self._read()
-        model = self.model_name
-
-        if model not in data:
-            data[model] = []
-            if model not in data["_meta"]["history_order"]:
-                data["_meta"]["history_order"].append(model)
-            data["_meta"]["active_model"] = model
-
-        data[model].append(
+        data["turns"].append(
             {
-                "role": role,
-                "content": content,
+                "input": user_input,
+                "output": model_output,
                 "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ"),
             }
         )

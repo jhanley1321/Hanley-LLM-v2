@@ -6,5 +6,13 @@ dist/
 wheels/
 *.egg-info
 
+
+# Folders
+/data
+/projects
+
+
 # environments
 .env
+
+
