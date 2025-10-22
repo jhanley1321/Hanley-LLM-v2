@@ -1,65 +1,68 @@
+from pathlib import Path
 import csv
-from typing import Dict, List, Optional, Any
+from typing import List, Dict, Optional
+
+from langchain_chroma import Chroma
+from langchain_ollama import OllamaEmbeddings
+from langchain_core.documents import Document
 
 
-class RAGPipeline:
+class RAG:
     """
-    Retrieval-Augmented Generation pipeline.
+    Minimal RAG:
+    - load_chroma_db(): load existing Chroma DB
+    - ingest_csv(): ingest ONE CSV file
+    - retrieve(): search
     """
 
-    def __init__(self, vector_store: Any, csv_path: str):
-        self.vector_store = vector_store
-        self.csv_path = csv_path
-        self._index_built: bool = False
+    def __init__(self):
+        self.persist_directory = Path("./chroma_db")
+        self.collection_name = "default_collection"
+        self.embedding_model = "mxbai-embed-large"
 
-    def load_csv_documents(self) -> Dict[str, str]:
-        """Load reviews from CSV into {doc_id: review_text} dict."""
-        docs: Dict[str, str] = {}
-        with open(self.csv_path, newline="", encoding="utf-8") as f:
+        self.embeddings = OllamaEmbeddings(model=self.embedding_model)
+        self.vectorstore: Optional[Chroma] = None
+
+    def load_chroma_db(self, collection_name: Optional[str] = None, persist_directory: Optional[str] = None) -> None:
+        coll = collection_name or self.collection_name
+        persist_dir = str(Path(persist_directory) if persist_directory else self.persist_directory)
+        self.vectorstore = Chroma(
+            collection_name=coll,
+            persist_directory=persist_dir,
+            embedding_function=self.embeddings,
+        )
+
+    def ingest_csv(self, csv_path: str) -> None:
+        """
+        Ingest ONE CSV file into the vector DB.
+        No options. No batching. No extras.
+        """
+        p = Path(csv_path)
+        # Read CSV rows
+        with open(p, "r", encoding="utf-8", newline="") as f:
             reader = csv.DictReader(f)
-            for i, row in enumerate(reader):
-                review: Optional[str] = row.get("review") or row.get("text") or str(row)
-                if review:
-                    docs[f"review_{i}"] = review
-        return docs
+            fieldnames = reader.fieldnames or []
+            rows: List[Dict[str, str]] = [row for row in reader]
 
-    def has_existing_index(self) -> bool:
-        """
-        Check if the vector store already contains indexed documents.
-        
-        Returns:
-            True if the store has data, False otherwise
-        """
-        try:
-            results = self.vector_store.query("ping", n_results=1)
-            return len(results) > 0
-        except Exception:
-            # If query fails (e.g., collection doesn't exist), assume empty
-            return False
+        # Build documents (row-level)
+        docs: List[Document] = []
+        for i, row in enumerate(rows):
+            # Simple "col: value" per line
+            content_lines = [f"{col}: {row.get(col, '')}" for col in fieldnames]
+            content = "\n".join(content_lines).strip()
+            if not content:
+                continue
+            docs.append(Document(page_content=content, metadata={"source": str(p), "row_index": i}))
 
-    def build_index(self, force_rebuild: bool = False) -> None:
-        """
-        Build (or reuse) vector store index.
-        
-        Only checks persistence on first call. After that, uses in-memory flag.
-        
-        Args:
-            force_rebuild: if True, re-index from scratch even if already built
-        """
-  
-        # Persistent check: does the store already have data on disk?
-        if self.has_existing_index() and not force_rebuild:
-            print("🔄 Using existing persisted index. Skipping rebuild.")
-            self._index_built = True
-            return
+        # Ensure vectorstore is ready
+        if self.vectorstore is None:
+            self.load_chroma_db()
 
-        # Build from scratch
-        docs: Dict[str, str] = self.load_csv_documents()
-        print(f"📥 Indexing {len(docs)} docs from {self.csv_path} ...")
-        self.vector_store.add_documents(docs)
-        print("✅ Index build complete!")
-        self._index_built = True
+        # Add all docs in one shot
+        self.vectorstore.add_documents(docs)
+        print(f"✅ Ingested {len(docs)} rows from '{p.name}' into collection '{self.collection_name}' at '{self.persist_directory}'")
 
-    def query(self, question: str, n_results: int = 3) -> List[str]:
-        """Query the vector store for similar docs."""
-        return self.vector_store.query(question, n_results)
+    def retrieve(self, query: str, top_k: int = 3) -> List[Document]:
+        if not self.vectorstore:
+            raise RuntimeError("Vector DB not loaded. Call load_chroma_db() or ingest_csv() first.")
+        return self.vectorstore.similarity_search(query, k=top_k)
