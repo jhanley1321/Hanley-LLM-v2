@@ -1,0 +1,32 @@
+{
+  "llama2": [
+    {
+      "role": "user",
+      "content": "Say a short hello.",
+      "timestamp": "2025-10-18T23-47-03Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Hello!",
+      "timestamp": "2025-10-18T23-47-05Z"
+    },
+    {
+      "role": "user",
+      "content": "Give me a fun fact about the ocean.",
+      "timestamp": "2025-10-18T23-47-05Z"
+    },
+    {
+      "role": "assistant",
+      "content": "\nDid you know that the ocean is home to the largest living structure on Earth? The Great Barrier Reef in Australia spans over 2,300 kilometers (1,400 miles) and can be seen from space! It's so big that it could cover the entire state of Texas. Despite its enormous size, the reef is made up of tiny coral polyps that work together to create this incredible ecosystem.",
+      "timestamp": "2025-10-18T23-47-08Z"
+    }
+  ],
+  "_meta": {
+    "session_id": "2025-10-18T23-47-03Z",
+    "created_at": "2025-10-18T23-47-03Z",
+    "active_model": "llama2",
+    "history_order": [
+      "llama2"
+    ]
+  }
+}

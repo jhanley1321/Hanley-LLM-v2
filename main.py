@@ -1,34 +1,29 @@
-from rag.vector_store import LangChainVectorStore
-from rag.rag import RAGPipeline
-from llm import LLM
-from rag.rag_chat_handler import RAGChatHandler
-from ui import ChatUI
+from hanley import Hanley
 
+def main():
+    hanley = Hanley()          # loads everything
+    # chat = hanley.chat         # get chat layer
 
-
-
-
+    # print(chat.send("Say a short hello."))
+    # print(chat.send("Give me a fun fact about the ocean."))
+    hanley.cli.start()
 
 
 def main():
+    hanley = Hanley()
 
-    vs = LangChainVectorStore(collection_name="restaurant_reviews")
-    llm = LLM(model="llama2")
-    rag = RAGPipeline(vector_store=vs, csv_path="data/realistic_restaurant_reviews.csv")
+    # Load existing DB (optional; ingest will also init if not loaded)
+    hanley.rag.load_chroma_db()
 
-    # Build index (reuse or rebuild depending on flag)
-    rag.build_index(force_rebuild=False)
+    # Ingest exactly one CSV
+    hanley.rag.ingest_csv("data/realistic_restaurant_reviews.csv")
+    # docs = hanley.rag.retrieve("Which review mentions gluten-free?", top_k=3)
+    # for i, d in enumerate(docs, 1):
+    #     print(f"\n[Match {i}]\n{d.page_content[:500]}\n---\n")
 
-    # Wrap LLM + RAG into chat handler
-    rag_chat = RAGChatHandler(rag_pipeline=rag, llm=llm)
-    # Run Streamlit UI
-    ChatUI(chat_handler=rag_chat).run()
-
+    # # Start CLI
+    print("\n💬 CLI Interface ready — type 'exit' or 'quit' to stop.\n")
+    hanley.cli.start()
 
 if __name__ == "__main__":
-    # Normal run = reuse index if present
-    
     main()
-
-    # For rebuild, change to:
-    # main(force_rebuild=True)
