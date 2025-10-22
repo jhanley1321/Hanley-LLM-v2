@@ -8,8 +8,9 @@ wheels/
 
 
 # Folders
-/data/
-/projects/
+data/
+projects/
+chat_logs/
 
 
 # environments

@@ -1,4 +1,4 @@
-from llm import LLM
+from llm.llm import LLM
 from chat.chat import Chat
 from chat.chat_history import ChatHistory
 from rag.rag import RAG
