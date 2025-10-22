@@ -21,9 +21,18 @@ def main():
     # for i, d in enumerate(docs, 1):
     #     print(f"\n[Match {i}]\n{d.page_content[:500]}\n---\n")
 
+    # Turn RAG on
+    hanley.rag.enabled = True
+    
+    # Now all messages will use RAG automatically
+    print(hanley.chat.send("Which review mentions gluten-free and what did they say? What was the Title. What date was it, and what rating was it given?" ))
+   
+
+
+
     # # Start CLI
-    print("\n💬 CLI Interface ready — type 'exit' or 'quit' to stop.\n")
-    hanley.cli.start()
+    # print("\n💬 CLI Interface ready — type 'exit' or 'quit' to stop.\n")
+    # hanley.cli.start()
 
 if __name__ == "__main__":
     main()

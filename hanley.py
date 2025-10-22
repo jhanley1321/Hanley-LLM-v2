@@ -17,7 +17,9 @@ class Hanley:
         self.history = ChatHistory(model_name=self.llm.model_name)
         self.rag = RAG()
 
+        # Wire components together
         self.chat.set_model(self.llm)
         self.chat.history = self.history
+        self.llm.set_rag(self.rag)  # LLM can now check RAG's enabled flag
 
         self.cli = CLIInterface(self)
