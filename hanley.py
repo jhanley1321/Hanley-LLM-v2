@@ -1,5 +1,5 @@
 from llm.llm import LLM
-from chat.chat import Chat
+from chat.chat import Chat, ChatOrchestrator
 from chat.chat_history import ChatHistory
 from rag.rag import RAG
 from chat.cli_interface import CLIInterface
@@ -8,7 +8,7 @@ from chat.cli_interface import CLIInterface
 class Hanley:
     """
     Pure orchestrator.
-    Builds and wires LLM, Chat, ChatHistory, RAG, and CLI interface.
+    Builds and wires LLM, Chat, ChatHistory, RAG, ChatOrchestrator, and CLI interface.
     """
 
     def __init__(self):
@@ -17,9 +17,9 @@ class Hanley:
         self.history = ChatHistory(model_name=self.llm.model_name)
         self.rag = RAG()
 
-        # Wire components together
-        self.chat.set_model(self.llm)
         self.chat.history = self.history
-        self.llm.set_rag(self.rag)  # LLM can now check RAG's enabled flag
+        self.llm.set_rag(self.rag)
+
+        self.chat_orchestrator = ChatOrchestrator(self.chat, self.llm)
 
         self.cli = CLIInterface(self)

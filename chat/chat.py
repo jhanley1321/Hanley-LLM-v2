@@ -2,42 +2,80 @@ from datetime import datetime, timezone
 
 class Chat:
     """
-    Chat layer between user and model.
-    Stores transient memory and passes messages to the attached model.
+    Chat layer for managing conversation history.
+    Stores messages in memory and optionally persists to disk.
     """
 
     def __init__(self):
         self.chat_log = []
-        self._model = None
         self.history = None
 
-    def set_model(self, model):
-        """Attach any backend model that implements send(message:str)->str."""
-        self._model = model
-
-
     def send(self, user_input: str) -> str:
-        """Accept user input, forward to model, store both messages in memory."""
-        if not self._model:
-            raise RuntimeError("No model attached to Chat layer. Use set_model() first.")
-
-        # Record user input in memory
+        """
+        Store user message in chat history.
+        Returns the user input for further processing.
+        """
         timestamp = datetime.now(timezone.utc).isoformat()
         self.chat_log.append({"role": "user", "content": user_input, "timestamp": timestamp})
+        return user_input
 
-        # Ask the model for a reply
-        reply = self._model.send(user_input)
-
-        # Record model output in memory
+    def add_assistant_response(self, response: str) -> None:
+        """
+        Store assistant response in chat history.
+        """
+        timestamp = datetime.now(timezone.utc).isoformat()
         self.chat_log.append({
             "role": "assistant",
-            "content": reply,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "content": response,
+            "timestamp": timestamp
         })
-
-        # Save the turn to disk via ChatHistory if attached
+        
         if self.history:
-            self.history.add_turn(user_input, reply)
+            user_msg = self.chat_log[-2]["content"] if len(self.chat_log) >= 2 else ""
+            self.history.add_turn(user_msg, response)
 
-        # Return the model's response up to caller
-        return reply
+    def get_messages(self):
+        """
+        Return the full chat log for sending to model.
+        """
+        return self.chat_log
+
+
+class ChatOrchestrator:
+    """
+    Orchestrates the flow between Chat history and Model.
+    Takes messages from Chat, sends to Model, returns response to Chat.
+    """
+
+    def __init__(self, chat: Chat, model_handler):
+        """
+        Initialize orchestrator with chat and model handler.
+        
+        Args:
+            chat: Chat instance for managing conversation history
+            model_handler: ModelHandler instance for sending messages to the model
+        """
+        self.chat = chat
+        self.model_handler = model_handler
+
+    def process_message(self, user_input: str) -> str:
+        """
+        Process a user message through the full pipeline:
+        1. Store user message in chat history
+        2. Send the user message to model
+        3. Store model response in chat history
+        4. Return model response
+        
+        Args:
+            user_input: The user's message
+            
+        Returns:
+            The model's response
+        """
+        self.chat.send(user_input)
+        
+        model_response = self.model_handler.send(user_input)
+        
+        self.chat.add_assistant_response(model_response)
+        
+        return model_response

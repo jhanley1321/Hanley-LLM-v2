@@ -7,7 +7,8 @@ class CLIInterface:
         self.hanley = hanley
 
     def start(self):
-        chat = self.hanley.chat
+        orchestrator = self.hanley.chat_orchestrator
+
         print("\nCLI started. Type 'exit' or 'quit' to end.\n")
         while True:
             try:
@@ -22,5 +23,5 @@ class CLIInterface:
                 print("\nEnding chat.\n")
                 break
 
-            reply = chat.send(user_text)
+            reply = orchestrator.process_message(user_text)
             print(f"Assistant: {reply}\n")
